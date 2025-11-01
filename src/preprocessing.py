@@ -9,11 +9,11 @@ def download_nltk_data():
     """
     try:
         nltk.data.find('tokenizers/punkt')
-    except nltk.downloader.DownloadError:
+    except LookupError:
         nltk.download('punkt')
     try:
         nltk.data.find('corpora/stopwords')
-    except nltk.downloader.DownloadError:
+    except LookupError:
         nltk.download('stopwords')
 
 def preprocess_text(text):
