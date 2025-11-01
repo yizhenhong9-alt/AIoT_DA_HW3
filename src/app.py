@@ -13,6 +13,8 @@ from nltk.corpus import stopwords
 import nltk
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import SVC
 import altair as alt
 from PIL import Image
 
@@ -20,9 +22,70 @@ from PIL import Image
 nltk.download('punkt')
 nltk.download('stopwords')
 
-def load_models():
+def train_model():
     """
-    載入訓練好的模型和向量化器
+    訓練模型並保存
+    """
+    try:
+        # 取得專案根目錄的絕對路徑
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        dataset_path = os.path.join(project_root, 'dataset', 'sms_spam_no_header.csv')
+        
+        # 讀取數據
+        df = pd.read_csv(dataset_path, names=['label', 'text'])
+        
+        # 文本預處理
+        stop_words = set(stopwords.words('english'))
+        
+        def preprocess_for_training(text):
+            # 分詞
+            tokens = word_tokenize(str(text).lower())
+            # 去除停用詞和標點
+            tokens = [t for t in tokens if t.isalnum() and t not in stop_words]
+            return ' '.join(tokens)
+        
+        # 預處理所有文本
+        df['processed_text'] = df['text'].apply(preprocess_for_training)
+        
+        # 準備數據
+        X = df['processed_text']
+        y = (df['label'] == 'spam').astype(int)
+        
+        # 分割數據
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        
+        # 特徵提取
+        vectorizer = TfidfVectorizer(min_df=5)
+        X_train_vec = vectorizer.fit_transform(X_train)
+        
+        # 訓練模型
+        model = SVC(kernel='linear', probability=True)
+        model.fit(X_train_vec, y_train)
+        
+        # 創建保存目錄
+        models_dir = os.path.join(project_root, 'models')
+        os.makedirs(models_dir, exist_ok=True)
+        
+        # 保存模型和向量化器
+        joblib.dump(model, os.path.join(models_dir, 'model.pkl'))
+        joblib.dump(vectorizer, os.path.join(models_dir, 'vectorizer.pkl'))
+        
+        # 保存配置
+        config = {
+            'test_size': 0.2,
+            'random_seed': 42
+        }
+        with open(os.path.join(models_dir, 'config.json'), 'w') as f:
+            json.dump(config, f)
+            
+        return model, vectorizer
+        
+    except Exception as e:
+        raise Exception(f"訓練模型時發生錯誤：{str(e)}")
+
+def load_or_train_models():
+    """
+    嘗試載入模型，如果不存在則訓練新模型
     """
     try:
         # 取得專案根目錄的絕對路徑
@@ -33,15 +96,21 @@ def load_models():
         model_path = os.path.join(models_dir, 'model.pkl')
         vectorizer_path = os.path.join(models_dir, 'vectorizer.pkl')
         
-        if not os.path.exists(model_path) or not os.path.exists(vectorizer_path):
-            raise FileNotFoundError("模型文件不存在")
-        
-        # 載入模型和向量化器
-        model = joblib.load(model_path)
-        vectorizer = joblib.load(vectorizer_path)
+        if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+            # 如果模型文件存在，載入它們
+            model = joblib.load(model_path)
+            vectorizer = joblib.load(vectorizer_path)
+            st.success('成功載入已有模型')
+        else:
+            # 如果模型不存在，訓練新模型
+            st.warning('未找到預訓練模型，正在訓練新模型...')
+            model, vectorizer = train_model()
+            st.success('模型訓練完成')
+            
         return model, vectorizer
     except Exception as e:
-        raise Exception(f"載入模型時發生錯誤：{str(e)}")
+        st.error(f"模型載入/訓練失敗：{str(e)}")
+        raise
 
 def preprocess_text(text):
     """
@@ -141,9 +210,9 @@ def main():
     with tab1:
         # 載入模型
         try:
-            model, vectorizer = load_models()
+            model, vectorizer = load_or_train_models()
         except Exception as e:
-            st.error("錯誤：無法載入模型。請確保已經運行過 train_model.py 訓練模型。")
+            st.error(f"錯誤：無法載入或訓練模型。錯誤信息：{str(e)}")
             st.stop()
         
         # 文本輸入
