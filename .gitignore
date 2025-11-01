@@ -69,10 +69,10 @@ venv.bak/
 logs/
 *.log
 
-# Dataset, models & visualizations (if large)
-dataset/
-models/
-visualizations/
+# The following directories are intentionally tracked for deployment purposes.
+# dataset/
+# models/
+# visualizations/
 
 # OS files
 Thumbs.db
