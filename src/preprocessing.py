@@ -30,6 +30,10 @@ def preprocess_text(text):
     Returns:
         str: 處理後的文本
     """
+    # Ensure the NLTK data path is available in this context (for multiprocessing)
+    if nltk_data_dir not in nltk.data.path:
+        nltk.data.path.append(nltk_data_dir)
+
     # 轉換為小寫
     text = text.lower()
     
