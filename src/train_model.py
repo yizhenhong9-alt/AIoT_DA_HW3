@@ -11,7 +11,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 from sklearn.metrics import precision_recall_curve, average_precision_score
-import nltk
 import joblib
 import os
 import matplotlib.pyplot as plt
@@ -19,11 +18,7 @@ import seaborn as sns
 from wordcloud import WordCloud
 import pandas as pd
 
-# 下載必要的 NLTK 數據
-nltk.download('punkt')
-nltk.download('stopwords')
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+from preprocessing import preprocess_text
 
 class SpamClassifier:
     def __init__(self):
@@ -37,27 +32,6 @@ class SpamClassifier:
             probability=True
         )
         
-    def preprocess_text(self, text):
-        """
-        文本預處理
-        
-        Args:
-            text (str): 輸入文本
-            
-        Returns:
-            str: 處理後的文本
-        """
-        # 轉換為小寫
-        text = text.lower()
-        
-        # 標記化和移除停用詞
-        stop_words = set(stopwords.words('english'))
-        tokens = word_tokenize(text)
-        tokens = [t for t in tokens if t not in stop_words and t.isalnum()]
-        
-        # 重新組合文本
-        return ' '.join(tokens)
-    
     def fit(self, X, y):
         """
         訓練模型
@@ -67,7 +41,7 @@ class SpamClassifier:
             y (list): 標籤列表
         """
         # 預處理文本
-        X_clean = [self.preprocess_text(text) for text in X]
+        X_clean = [preprocess_text(text) for text in X]
         
         # 特徵提取
         X_features = self.vectorizer.fit_transform(X_clean)
@@ -85,7 +59,7 @@ class SpamClassifier:
         Returns:
             np.array: 預測結果
         """
-        X_clean = [self.preprocess_text(text) for text in X]
+        X_clean = [preprocess_text(text) for text in X]
         X_features = self.vectorizer.transform(X_clean)
         return self.model.predict(X_features)
     
@@ -99,7 +73,7 @@ class SpamClassifier:
         Returns:
             np.array: 預測機率
         """
-        X_clean = [self.preprocess_text(text) for text in X]
+        X_clean = [preprocess_text(text) for text in X]
         X_features = self.vectorizer.transform(X_clean)
         return self.model.predict_proba(X_features)
 
@@ -157,7 +131,7 @@ def create_visualization(df, y_test, y_pred, y_prob, model, classifier, project_
     feature_names = classifier.vectorizer.get_feature_names_out()
 
     # Preprocess messages using classifier preprocessing to match vectorizer
-    preprocessed = df['message'].apply(classifier.preprocess_text)
+    preprocessed = df['message'].apply(preprocess_text)
 
     X_all = classifier.vectorizer.transform(preprocessed)
 
@@ -271,8 +245,8 @@ def main():
         os.makedirs(models_dir)
     
     # 載入數據
-    url = "https://raw.githubusercontent.com/PacktPublishing/Hands-On-Artificial-Intelligence-for-Cybersecurity/refs/heads/master/Chapter03/datasets/sms_spam_no_header.csv"
-    df = pd.read_csv(url, names=['label', 'message'])
+    dataset_path = os.path.join(project_root, 'dataset', 'sms_spam_no_header.csv')
+    df = pd.read_csv(dataset_path, names=['label', 'message'])
     
     # 將標籤轉換為數值
     df['label_num'] = (df['label'] == 'spam').astype(int)
