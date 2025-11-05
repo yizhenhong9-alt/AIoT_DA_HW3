@@ -87,6 +87,6 @@ requirements.txt            # 依賴套件清單
 - 格式：CSV，包含 'label' 和 'message' 欄位
 
 ### 部署相關
-- Streamlit Cloud 部署：https://7114056010spamemail.streamlit.app/
+- Streamlit Cloud 部署：[https://aiotdahw3-7114056010.streamlit.app/]
 - NLTK 數據包：需要額外下載
 - scikit-learn：模型和向量化器版本相容性
